@@ -4,6 +4,12 @@
 
 当前版本：**0.3.0 · 试用版**。使用 C#、WinForms 与 .NET 10 开发，项目自身源码采用 [MIT 许可](LICENSE)。
 
+## 下载便携版
+
+从 [Releases](https://github.com/LAN-TINA-WS/LightCapture/releases) 下载 `LightCapture-0.3.0-win-x64-portable.zip`，完整解压后运行 `LightCapture.exe`。便携包包含.NET运行时；录屏与GIF导出所需的FFmpeg需在设置中单独配置。
+
+发布页同时提供源码包与 `SHA256SUMS.txt`。这是试用版本，真实桌面与音频设备的验证范围见下文。
+
 ## 界面预览
 
 以下为使用合成内容生成的控件预览：
@@ -89,13 +95,21 @@ dotnet build .\LightCapture.csproj -c Release
 .\bin\Release\net10.0-windows10.0.19041.0\LightCapture.exe
 ```
 
-FFmpeg 不随源码分发；缺少它仍可编译并使用截图、编辑、OCR等功能。准备完整便携构建时，先按 [工具说明](tools/README.md) 放置编码器，再执行：
+FFmpeg 不随源码分发；缺少它仍可编译并使用截图、编辑、OCR等功能。制作与公开Release一致的便携包时，先提交源码变更，再准备本地编码器作为合成自测工具：
+
+```powershell
+.\package-release.ps1 -EncoderPath 'C:\Tools\ffmpeg.exe'
+```
+
+该脚本发布自包含Windows x64应用，运行完整程序及界面检查，生成便携ZIP、源码ZIP、哈希清单及构建记录。测试编码器只作为本机验证工具，最终公开包不包含它。脚本不自动创建远程Release或上传文件。
+
+也可以按 [工具说明](tools/README.md) 将编码器放在项目的tools目录，执行本地完整构建：
 
 ```powershell
 .\build.ps1
 ```
 
-脚本生成 `dist/LightCapture-<版本>-win-x64/` 与ZIP，执行程序自测、工具栏及界面离屏检查，并保存验证报告和文件哈希。构建脚本不会上传产物或自动发布版本。
+本地完整构建生成 `dist/LightCapture-<版本>-win-x64/` 与ZIP，包含准备好的编码器；如果另行分发这类包，需要处理编码器对应的许可和源码要求。构建脚本不会上传产物或自动发布版本。
 
 ## 验证与已知限制
 
