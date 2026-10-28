@@ -46,7 +46,7 @@ try {
     $core = Get-Content -LiteralPath $coreReportPath -Raw | ConvertFrom-Json
     $toolbar = Get-Content -LiteralPath (Join-Path $toolbarRoot 'results.json') -Raw | ConvertFrom-Json
     $appearance = Get-Content -LiteralPath (Join-Path $appearanceRoot 'results.json') -Raw | ConvertFrom-Json
-    foreach ($document in @('README.md','CHANGELOG.md','CONTRIBUTING.md','IMPLEMENTATION.md','THIRD-PARTY-NOTICES.md','LICENSE')) {
+    foreach ($document in @('README.md','README.en.md','CHANGELOG.md','CONTRIBUTING.md','IMPLEMENTATION.md','THIRD-PARTY-NOTICES.md','LICENSE')) {
         Copy-Item -LiteralPath (Join-Path $projectRoot $document) -Destination $packageRoot
     }
     Copy-Item -LiteralPath (Join-Path $projectRoot 'tools\README.md') -Destination (Join-Path $packageRoot 'tools\README.md')

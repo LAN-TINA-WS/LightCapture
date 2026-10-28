@@ -2,6 +2,18 @@
 
 常驻 Windows 系统托盘的截图与标注工具。按快捷键选区、编辑、复制或保存，也支持贴图、滚动长截图、本机文字识别、可配置文字翻译和区域录屏。
 
+**中文** | [EN](README.en.md)
+
+[![Release](https://img.shields.io/github/v/release/LAN-TINA-WS/LightCapture?include_prereleases&sort=semver&label=release)](https://github.com/LAN-TINA-WS/LightCapture/releases)
+[![Downloads](https://img.shields.io/github/downloads/LAN-TINA-WS/LightCapture/total?label=downloads)](https://github.com/LAN-TINA-WS/LightCapture/releases)
+[![Stars](https://img.shields.io/github/stars/LAN-TINA-WS/LightCapture?label=stars&style=flat)](https://github.com/LAN-TINA-WS/LightCapture/stargazers)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%202004%2B%20x64-0078D4)](#运行环境)
+[![Portable v0.3.0](https://img.shields.io/badge/Portable%20v0.3.0-58.5%20MB-2ea44f)](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.0/LightCapture-0.3.0-win-x64-portable.zip)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](#从源码构建)
+[![License](https://img.shields.io/github/license/LAN-TINA-WS/LightCapture)](LICENSE)
+
+> [下载 Windows 便携版](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.0/LightCapture-0.3.0-win-x64-portable.zip) · [Release 说明](https://github.com/LAN-TINA-WS/LightCapture/releases) · [问题反馈与建议](https://github.com/LAN-TINA-WS/LightCapture/issues)
+
 当前版本：**0.3.0 · 试用版**。使用 C#、WinForms 与 .NET 10 开发，项目自身源码采用 [MIT 许可](LICENSE)。
 
 ## 下载便携版

@@ -27,6 +27,8 @@ $appearanceRun = Start-Process -FilePath (Join-Path $packageRoot 'LightCapture.e
 if ($appearanceRun.ExitCode -ne 0) { throw "Settings and menu checks failed. Review $appearanceRoot" }
 $appearance = Get-Content -LiteralPath (Join-Path $appearanceRoot 'results.json') -Raw | ConvertFrom-Json
 Copy-Item -LiteralPath (Join-Path $projectRoot 'README.md') -Destination (Join-Path $packageRoot '使用说明.md')
+Copy-Item -LiteralPath (Join-Path $projectRoot 'README.md') -Destination $packageRoot
+Copy-Item -LiteralPath (Join-Path $projectRoot 'README.en.md') -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $projectRoot 'IMPLEMENTATION.md') -Destination (Join-Path $packageRoot '实现与测试范围.md')
 Copy-Item -LiteralPath (Join-Path $projectRoot 'THIRD-PARTY-NOTICES.md') -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $packageRoot
