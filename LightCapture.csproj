@@ -9,7 +9,7 @@
     <ApplicationIcon>assets\app.ico</ApplicationIcon>
     <AssemblyName>LightCapture</AssemblyName>
     <RootNamespace>LightCapture</RootNamespace>
-    <Version>0.3.1</Version>
+    <Version>0.3.2</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <DefaultItemExcludes>$(DefaultItemExcludes);dist/**</DefaultItemExcludes>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

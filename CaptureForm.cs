@@ -14,6 +14,8 @@ internal enum CaptureAction
 internal sealed class CaptureForm : Form, IMessageFilter
 {
     readonly CaptureDocument document;
+    readonly CaptureBackdrop backdrop;
+    Region? paintRegion;
     readonly AppSettings settings;
     readonly Rectangle desktop;
     readonly List<Rectangle> windows;
@@ -49,6 +51,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
         this.desktop = desktop;
         this.intent = intent;
         document = new(background);
+        backdrop = new(background);
         displays = Screen.AllScreens.Select(screen =>
         {
             var bounds = screen.Bounds; var area = screen.WorkingArea;
@@ -76,7 +79,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
         KeyPreview = true;
         Font = new Font("Microsoft YaHei UI", 9);
         BackColor = Color.Black;
-        SetStyle(ControlStyles.ResizeRedraw | ControlStyles.OptimizedDoubleBuffer, true);
+        SetStyle(ControlStyles.ResizeRedraw | ControlStyles.OptimizedDoubleBuffer | ControlStyles.Opaque, true);
         BuildToolbar();
         Controls.Add(toolbar);
         toolbar.Visible = false;
@@ -105,7 +108,16 @@ internal sealed class CaptureForm : Form, IMessageFilter
     {
         if (disposing) { Application.RemoveMessageFilter(this); followTimer.Stop(); followTimer.Dispose(); }
         base.Dispose(disposing);
-        if (disposing) magnifier.Dispose();
+        if (disposing) { magnifier.Dispose(); backdrop.Dispose(); }
+    }
+    protected override void WndProc(ref Message message)
+    {
+        if (message.Msg != 0x000F) { base.WndProc(ref message); return; }
+        // PaintEventArgs exposes a bounding rectangle; preserve the native update shape.
+        using var current = Native.PaintRegion(message.HWnd);
+        var previous = paintRegion; paintRegion = current;
+        try { base.WndProc(ref message); }
+        finally { paintRegion = previous; }
     }
     void BuildToolbar()
     {
@@ -165,7 +177,10 @@ internal sealed class CaptureForm : Form, IMessageFilter
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
-        CapturePreview.DrawBackground(g, document.Background, e.ClipRectangle);
+        using var originalClip = g.Clip;
+        if (paintRegion != null) g.SetClip(paintRegion, CombineMode.Intersect);
+        var rect = CapturePreview.ActiveRectangle(selection, hover, interaction == "polygon");
+        backdrop.Draw(g, e.ClipRectangle, rect, interaction != "polygon" && !selection.IsEmpty ? polygon : null);
         if (selection.Width > 0 && selection.Height > 0)
         {
             var state = g.Save();
@@ -181,26 +196,16 @@ internal sealed class CaptureForm : Form, IMessageFilter
                 CaptureDocument.DrawAnnotation(g, draft, document.Background);
             g.Restore(state);
         }
-        var rect = CapturePreview.ActiveRectangle(selection, hover, interaction == "polygon");
-        CapturePreview.DrawMask(g, ClientRectangle, rect, interaction != "polygon" && !selection.IsEmpty ? polygon : null);
         if (rect.Width > 0 && rect.Height > 0)
         {
             if (selection.Width > 0 && selection.Height > 0)
             {
-                using var pen = new Pen(Color.FromArgb(90, 171, 255), 1);
-                g.DrawRectangle(pen, rect.X, rect.Y, Math.Max(0, rect.Width - 1), Math.Max(0, rect.Height - 1));
+                CaptureSelectionVisuals.Draw(g, selection, ClientRectangle, Font, interaction != "polygon");
             }
             else
             {
                 CapturePreview.DrawOutline(g, rect, settings.PreviewBorderThickness, CaptureDisplay.At(displays, cursorPoint).Scale);
             }
-            if (selection.Width > 0 && interaction != "polygon")
-            foreach (var h in Handles(selection))
-            {
-                g.FillRectangle(Brushes.White, h);
-                g.DrawRectangle(Pens.DodgerBlue, h);
-            }
-            if (selection.Width > 0 && selection.Height > 0) DrawLabel(g, $"{rect.Width} × {rect.Height}", new Point(Math.Clamp(rect.Left, 8, Math.Max(8, Width - 150)), Math.Max(8, rect.Top - 32)));
         }
         if (polygon is { Count: > 0 })
         {
@@ -225,11 +230,12 @@ internal sealed class CaptureForm : Form, IMessageFilter
         if (ShowMagnifier)
             DrawMagnifier(g);
         else paintedMagnifierBounds = Rectangle.Empty;
-        if (selection.IsEmpty && (hover.IsEmpty || interaction == "polygon"))
+        if (!CaptureSelectionVisuals.HasArea(selection) && (hover.IsEmpty || interaction == "polygon"))
         {
-            string hint = interaction == "polygon" ? "自由选区：左键添加点 · 双击闭合 · 右键退出" : "拖动选择区域 · 单击吸附窗口 · 右键 / Esc 取消";
-            DrawLabel(g, hint, new Point(Math.Max(16, Width / 2 - 210), 24));
+            string hint = interaction == "polygon" ? "自由选区：左键添加点 · 双击闭合 · 右键退出" : CaptureSelectionVisuals.GuideText;
+            DrawLabel(g, hint, CaptureSelectionVisuals.GuidePosition(ClientRectangle));
         }
+        g.SetClip(originalClip, CombineMode.Replace);
         base.OnPaint(e);
     }
     void UpdateHover(Point point)
@@ -239,13 +245,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
         hover = Rectangle.Intersect(CaptureDisplay.At(displays, point).Bounds, ClientRectangle);
     }
     void DrawLabel(Graphics g, string text, Point at)
-    {
-        var size = TextRenderer.MeasureText(text, Font);
-        var r = new Rectangle(at, new Size(size.Width + 16, size.Height + 12));
-        using var b = new SolidBrush(Color.FromArgb(235, 27, 37, 52));
-        g.FillRoundedRectangle(b, r, 5);
-        TextRenderer.DrawText(g, text, Font, new Point(at.X + 8, at.Y + 6), Color.White, TextFormatFlags.NoPadding);
-    }
+        => CaptureSelectionVisuals.DrawLabel(g, text, Font, at);
     void DrawMagnifier(Graphics g)
     {
         if (!magnifierFollow.HasPosition) magnifierFollow.Request(cursorPoint, followClock.ElapsedMilliseconds, 0, true);
@@ -259,21 +259,21 @@ internal sealed class CaptureForm : Form, IMessageFilter
     }
     bool ShowMagnifier => !toolbar.Visible && interaction is not ("moving-object" or "resizing-object") && draft == null
         && new Rectangle(Point.Empty, document.Background.Size).Contains(cursorPoint);
-    void QueueMagnifier(bool sceneChanged)
+    void QueueMagnifier(bool sceneChanged, Region? sceneDamage = null)
     {
         if (!ShowMagnifier)
         {
             followTimer.Stop(); magnifierFollow.Reset();
             if (!paintedMagnifierBounds.IsEmpty) Invalidate(Rectangle.Inflate(paintedMagnifierBounds, 2, 2));
-            if (sceneChanged) Invalidate();
+            if (sceneChanged) { if (sceneDamage != null) Invalidate(sceneDamage, false); else Invalidate(); }
             return;
         }
         bool moved = magnifierFollow.Request(cursorPoint, followClock.ElapsedMilliseconds, settings.MagnifierRefreshIntervalMs);
-        if (sceneChanged) Invalidate();
-        else if (moved) InvalidateMagnifier();
+        if (sceneChanged) { if (sceneDamage != null) Invalidate(sceneDamage, false); else Invalidate(); }
+        if ((moved || sceneDamage != null) && (!sceneChanged || sceneDamage != null)) InvalidateMagnifier();
         ArmFollowTimer();
         // Real-time mode paints the dirty region now instead of waiting behind more input.
-        if (moved && !sceneChanged && settings.MagnifierRefreshIntervalMs == 0) Update();
+        if ((moved || sceneChanged) && (!sceneChanged || sceneDamage != null) && settings.MagnifierRefreshIntervalMs == 0) Update();
     }
     void InvalidateMagnifier()
     {
@@ -307,10 +307,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
         ArmFollowTimer();
     }
     static List<Rectangle> Handles(Rectangle r)
-    {
-        Point[] p = [new(r.Left, r.Top), new(r.Left + r.Width / 2, r.Top), new(r.Right, r.Top), new(r.Right, r.Top + r.Height / 2), new(r.Right, r.Bottom), new(r.Left + r.Width / 2, r.Bottom), new(r.Left, r.Bottom), new(r.Left, r.Top + r.Height / 2)];
-        return p.Select(q => new Rectangle(q.X - 4, q.Y - 4, 8, 8)).ToList();
-    }
+        => CaptureSelectionVisuals.Handles(r);
     static RectangleF AnnotationBounds(Annotation a)
     {
         var b = a.Bounds;
@@ -323,6 +320,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
     protected override void OnMouseMove(MouseEventArgs e)
     {
         var previousHover = hover;
+        var previousSelection = selection;
         cursorPoint = e.Location;
         if (interaction == "selecting")
         {
@@ -394,7 +392,13 @@ internal sealed class CaptureForm : Form, IMessageFilter
             UpdateHover(e.Location);
         }
         last = e.Location;
-        QueueMagnifier(interaction.Length != 0 || hover != previousHover);
+        if (CaptureSelectionDamage.IsGeometryDrag(interaction))
+        {
+            using var graphics = CreateGraphics();
+            using var damage = CaptureSelectionDamage.Create(graphics, previousSelection, selection, previousHover, hover, ClientRectangle, Font, polygon is not { Count: >= 3 });
+            QueueMagnifier(true, damage);
+        }
+        else QueueMagnifier(interaction.Length != 0 || hover != previousHover);
         base.OnMouseMove(e);
     }
     protected override void OnMouseDown(MouseEventArgs e)

@@ -21,6 +21,16 @@ internal static class Native
     [DllImport("dwmapi")] public static extern int DwmGetWindowAttribute(IntPtr hwnd, int attr, out RECT rect, int size);
     [DllImport("user32")] public static extern bool DestroyIcon(IntPtr icon);
     [DllImport("user32")] public static extern bool SetWindowDisplayAffinity(IntPtr hwnd, uint affinity);
+    [DllImport("user32")] static extern int GetUpdateRgn(IntPtr hwnd, IntPtr region, bool erase);
+    [DllImport("gdi32")] static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+    [DllImport("gdi32")] static extern bool DeleteObject(IntPtr obj);
+    internal static Region? PaintRegion(IntPtr hwnd)
+    {
+        var handle = CreateRectRgn(0, 0, 0, 0);
+        if (handle == IntPtr.Zero) return null;
+        try { return GetUpdateRgn(hwnd, handle, false) > 1 ? Region.FromHrgn(handle) : null; }
+        finally { DeleteObject(handle); }
+    }
     [DllImport("user32")] static extern IntPtr MonitorFromPoint(Point point, uint flags);
     [DllImport("shcore")] static extern int GetDpiForMonitor(IntPtr monitor, int type, out uint dpiX, out uint dpiY);
     public static float DpiScaleAt(Point point)

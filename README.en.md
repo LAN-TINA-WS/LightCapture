@@ -8,19 +8,19 @@ A screenshot and annotation tool that lives in the Windows system tray. Capture 
 [![Downloads](https://img.shields.io/github/downloads/LAN-TINA-WS/LightCapture/total?label=downloads)](https://github.com/LAN-TINA-WS/LightCapture/releases)
 [![Stars](https://img.shields.io/github/stars/LAN-TINA-WS/LightCapture?label=stars&style=flat)](https://github.com/LAN-TINA-WS/LightCapture/stargazers)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%202004%2B%20x64-0078D4)](#requirements)
-[![Portable v0.3.1](https://img.shields.io/badge/Portable%20v0.3.1-58.5%20MB-2ea44f)](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.1/LightCapture-0.3.1-win-x64-portable.zip)
+[![Portable v0.3.2](https://img.shields.io/badge/Portable%20v0.3.2-58.5%20MB-2ea44f)](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.2/LightCapture-0.3.2-win-x64-portable.zip)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](#build-from-source)
 [![License](https://img.shields.io/github/license/LAN-TINA-WS/LightCapture)](LICENSE)
 
-> [Download for Windows](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.1/LightCapture-0.3.1-win-x64-portable.zip) · [Release notes](https://github.com/LAN-TINA-WS/LightCapture/releases) · [Report an issue or suggest a feature](https://github.com/LAN-TINA-WS/LightCapture/issues)
+> [Download for Windows](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.2/LightCapture-0.3.2-win-x64-portable.zip) · [Release notes](https://github.com/LAN-TINA-WS/LightCapture/releases) · [Report an issue or suggest a feature](https://github.com/LAN-TINA-WS/LightCapture/issues)
 
-Current version: **0.3.1 · Preview**. Built with C#, WinForms, and .NET 10. Project-owned source code is available under the [MIT license](LICENSE).
+Current version: **0.3.2 · Preview**. Built with C#, WinForms, and .NET 10. Project-owned source code is available under the [MIT license](LICENSE).
 
 The application currently uses a Simplified Chinese interface. The language links above switch the documentation.
 
 ## Download the portable app
 
-Get `LightCapture-0.3.1-win-x64-portable.zip` from [Releases](https://github.com/LAN-TINA-WS/LightCapture/releases), extract the entire folder, and run `LightCapture.exe`. The portable package includes the .NET runtime. Configure FFmpeg separately for recording and GIF export.
+Get `LightCapture-0.3.2-win-x64-portable.zip` from [Releases](https://github.com/LAN-TINA-WS/LightCapture/releases), extract the entire folder, and run `LightCapture.exe`. The portable package includes the .NET runtime. Configure FFmpeg separately for recording and GIF export.
 
 The release also provides a source archive and `SHA256SUMS.txt`. This is a preview build; the validation scope and remaining desktop checks are described below.
 
@@ -83,6 +83,8 @@ Open **偏好设置 → 界面外观 → 放大镜跟随速度** (Preferences �
 
 Real-time mode prioritizes a prompt response; slower modes reduce repaint frequency. Moving the magnifier repaints its previous and new areas and reuses text layouts and monitor information. Color picking and selection use the current mouse position. Actual responsiveness depends on the device and system paint scheduling.
 
+Dragging a rectangular selection repaints changed bright and shaded areas, old and new borders, and size labels. Cached shaded and original images reduce full-screen copying and repeated mask blending. Moving and resizing selections use the same approach; polygon updates retain a region covering changes inside the polygon.
+
 <details>
 <summary>View follow-speed settings</summary>
 
@@ -140,7 +142,7 @@ The local full build produces `dist/LightCapture-<version>-win-x64/` and a ZIP t
 
 ## Validation and known limitations
 
-Current local validation records include 41 program checks, 12 toolbar cases, and 109 interface cases passing. New magnifier checks cover follow scheduling, saved preferences, mixed-DPI monitor selection, and pixel comparisons of partial repaints at 4K. Synthetic paint timings do not measure real desktop input latency. Translation protocols use mocked HTTP responses; test real endpoints with your own configuration. Recording checks use synthetic video and audio.
+Current local validation records include 41 program checks, 12 toolbar cases, and 114 interface cases passing. New selection checks include 80 frame comparisons across four DPI scales and a large 4K selection, covering reversed drags, zero width or height, screen edges, movement, resizing, annotations, polygons, and coalesced repaints. Synthetic paint timings do not measure real desktop input latency. Translation protocols use mocked HTTP responses; test real endpoints with your own configuration. Recording checks use synthetic video and audio.
 
 Desktop capture, multi-monitor and mixed-DPI setups, cross-application paste, physical audio devices, and long recordings need further real-world testing. Scrolling capture currently stitches downward only. Recording pause, manual audio-device selection, HDR correction, and image-editor cropping are not implemented. Existing annotations in imported images are not reconstructed as editable objects.
 

@@ -20,6 +20,7 @@ internal static class AppearanceProof
             results.AddRange(TextResultProof.Generate(directory));
             results.AddRange(MagnifierProof.Generate(directory));
             results.AddRange(MagnifierFollowingProof.Generate(directory));
+            results.AddRange(CaptureSelectionProof.Generate(directory));
             results.AddRange(SizePreferencesProof.Generate(directory));
             results.AddRange(CapturePreviewProof.Generate(directory));
             foreach (float scale in new[] { 1, 1.25f, 1.5f, 2 })

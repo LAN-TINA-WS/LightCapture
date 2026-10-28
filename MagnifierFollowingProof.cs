@@ -94,10 +94,12 @@ internal static class MagnifierFollowingProof
         var layout = renderer.Fit(fullGraphics, 2, viewport);
         Check(ReferenceEquals(layout, renderer.Fit(fullGraphics, 2, viewport)), "Magnifier layout is remeasured for each frame.");
         Rectangle Bounds(Point point) => layout.Place(point, viewport);
+        using var backdrop = new CaptureBackdrop(source);
         void DrawFrame(Graphics graphics, Point point, Rectangle clip, bool full)
         {
-            if (full) graphics.DrawImageUnscaled(source, 0, 0); else CapturePreview.DrawBackground(graphics, source, clip);
-            CapturePreview.DrawMask(graphics, viewport, highlight); CapturePreview.DrawOutline(graphics, highlight, 2, 2);
+            if (full) { graphics.DrawImageUnscaled(source, 0, 0); CapturePreview.DrawMask(graphics, viewport, highlight); }
+            else backdrop.Draw(graphics, clip, highlight);
+            CapturePreview.DrawOutline(graphics, highlight, 2, 2);
             renderer.Draw(graphics, source, point, Bounds(point).Location, layout, highlight.Size);
         }
         Point previous = new(1000, 600); DrawFrame(partialGraphics, previous, viewport, true);

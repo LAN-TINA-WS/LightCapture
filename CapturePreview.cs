@@ -8,7 +8,7 @@ internal static class CapturePreview
     internal static void DrawBackground(Graphics graphics, Bitmap image, Rectangle clip)
     {
         var area = Rectangle.Intersect(clip, new Rectangle(Point.Empty, image.Size));
-        if (!area.IsEmpty) graphics.DrawImage(image, area, area, GraphicsUnit.Pixel);
+        if (area.Width > 0 && area.Height > 0) graphics.DrawImage(image, area, area, GraphicsUnit.Pixel);
     }
     internal static Rectangle ActiveRectangle(Rectangle selection, Rectangle hover, bool choosingPolygon)
         => selection.Width > 0 && selection.Height > 0 ? selection : choosingPolygon ? Rectangle.Empty : hover;

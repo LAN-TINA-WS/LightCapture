@@ -8,17 +8,17 @@
 [![Downloads](https://img.shields.io/github/downloads/LAN-TINA-WS/LightCapture/total?label=downloads)](https://github.com/LAN-TINA-WS/LightCapture/releases)
 [![Stars](https://img.shields.io/github/stars/LAN-TINA-WS/LightCapture?label=stars&style=flat)](https://github.com/LAN-TINA-WS/LightCapture/stargazers)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%202004%2B%20x64-0078D4)](#运行环境)
-[![Portable v0.3.1](https://img.shields.io/badge/Portable%20v0.3.1-58.5%20MB-2ea44f)](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.1/LightCapture-0.3.1-win-x64-portable.zip)
+[![Portable v0.3.2](https://img.shields.io/badge/Portable%20v0.3.2-58.5%20MB-2ea44f)](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.2/LightCapture-0.3.2-win-x64-portable.zip)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](#从源码构建)
 [![License](https://img.shields.io/github/license/LAN-TINA-WS/LightCapture)](LICENSE)
 
-> [下载 Windows 便携版](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.1/LightCapture-0.3.1-win-x64-portable.zip) · [Release 说明](https://github.com/LAN-TINA-WS/LightCapture/releases) · [问题反馈与建议](https://github.com/LAN-TINA-WS/LightCapture/issues)
+> [下载 Windows 便携版](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.2/LightCapture-0.3.2-win-x64-portable.zip) · [Release 说明](https://github.com/LAN-TINA-WS/LightCapture/releases) · [问题反馈与建议](https://github.com/LAN-TINA-WS/LightCapture/issues)
 
-当前版本：**0.3.1 · 试用版**。使用 C#、WinForms 与 .NET 10 开发，项目自身源码采用 [MIT 许可](LICENSE)。
+当前版本：**0.3.2 · 试用版**。使用 C#、WinForms 与 .NET 10 开发，项目自身源码采用 [MIT 许可](LICENSE)。
 
 ## 下载便携版
 
-从 [Releases](https://github.com/LAN-TINA-WS/LightCapture/releases) 下载 `LightCapture-0.3.1-win-x64-portable.zip`，完整解压后运行 `LightCapture.exe`。便携包包含.NET运行时；录屏与GIF导出所需的FFmpeg需在设置中单独配置。
+从 [Releases](https://github.com/LAN-TINA-WS/LightCapture/releases) 下载 `LightCapture-0.3.2-win-x64-portable.zip`，完整解压后运行 `LightCapture.exe`。便携包包含.NET运行时；录屏与GIF导出所需的FFmpeg需在设置中单独配置。
 
 发布页同时提供源码包与 `SHA256SUMS.txt`。这是试用版本，真实桌面与音频设备的验证范围见下文。
 
@@ -81,6 +81,8 @@
 
 实时模式优先减少跟随等待；降低速度可减少重绘。放大镜移动时按需刷新前后占用的区域，并复用文字布局和显示器信息。取色与选区仍依据当前鼠标位置处理，实际响应取决于设备与系统绘制调度。
 
+拖拽矩形选区时，按亮暗区域的变化、前后边框和尺寸提示进行局部刷新，复用缓存的暗色底图与原图，减少整屏复制及重复遮罩混合。选区移动、缩放沿用相同机制；多边形保留覆盖其内部变化的刷新范围。
+
 <details>
 <summary>查看跟随速度设置</summary>
 
@@ -138,7 +140,7 @@ FFmpeg 不随源码分发；缺少它仍可编译并使用截图、编辑、OCR�
 
 ## 验证与已知限制
 
-当前本机验证记录：41项程序检查、12组工具栏检查、109组界面检查通过。放大镜新增跟随调度、配置保存、混合DPI信息选择及4K局部刷新像素对比；合成绘制计时不代表实际桌面的输入延迟。翻译协议用模拟 HTTP 响应验证，真实服务连通性需使用自己的配置测试；录制验证使用合成视频／音频。
+当前本机验证记录：41项程序检查、12组工具栏检查、114组界面检查通过。框选新增四档缩放下的80次逐帧像素对比及4K大选区检查，覆盖反向拖动、零宽高、屏幕边缘、移动缩放、标注、多边形和合并刷新；合成绘制计时不代表实际桌面的输入延迟。翻译协议用模拟 HTTP 响应验证，真实服务连通性需使用自己的配置测试；录制验证使用合成视频／音频。
 
 实际桌面捕获、多屏／混合DPI、跨应用粘贴、真实音频设备及长时间录制仍需实测。长截图当前仅支持垂直向下拼接；未提供暂停录屏、手动选择音频设备、HDR校正或图片编辑器裁剪。导入图片中的已有标注不会恢复为独立对象。
 
