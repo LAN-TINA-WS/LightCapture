@@ -8,19 +8,19 @@ A screenshot and annotation tool that lives in the Windows system tray. Capture 
 [![Downloads](https://img.shields.io/github/downloads/LAN-TINA-WS/LightCapture/total?label=downloads)](https://github.com/LAN-TINA-WS/LightCapture/releases)
 [![Stars](https://img.shields.io/github/stars/LAN-TINA-WS/LightCapture?label=stars&style=flat)](https://github.com/LAN-TINA-WS/LightCapture/stargazers)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%202004%2B%20x64-0078D4)](#requirements)
-[![Portable v0.3.0](https://img.shields.io/badge/Portable%20v0.3.0-58.5%20MB-2ea44f)](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.0/LightCapture-0.3.0-win-x64-portable.zip)
+[![Portable v0.3.1](https://img.shields.io/badge/Portable%20v0.3.1-58.5%20MB-2ea44f)](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.1/LightCapture-0.3.1-win-x64-portable.zip)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](#build-from-source)
 [![License](https://img.shields.io/github/license/LAN-TINA-WS/LightCapture)](LICENSE)
 
-> [Download for Windows](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.0/LightCapture-0.3.0-win-x64-portable.zip) · [Release notes](https://github.com/LAN-TINA-WS/LightCapture/releases) · [Report an issue or suggest a feature](https://github.com/LAN-TINA-WS/LightCapture/issues)
+> [Download for Windows](https://github.com/LAN-TINA-WS/LightCapture/releases/download/v0.3.1/LightCapture-0.3.1-win-x64-portable.zip) · [Release notes](https://github.com/LAN-TINA-WS/LightCapture/releases) · [Report an issue or suggest a feature](https://github.com/LAN-TINA-WS/LightCapture/issues)
 
-Current version: **0.3.0 · Preview**. Built with C#, WinForms, and .NET 10. Project-owned source code is available under the [MIT license](LICENSE).
+Current version: **0.3.1 · Preview**. Built with C#, WinForms, and .NET 10. Project-owned source code is available under the [MIT license](LICENSE).
 
 The application currently uses a Simplified Chinese interface. The language links above switch the documentation.
 
 ## Download the portable app
 
-Get `LightCapture-0.3.0-win-x64-portable.zip` from [Releases](https://github.com/LAN-TINA-WS/LightCapture/releases), extract the entire folder, and run `LightCapture.exe`. The portable package includes the .NET runtime. Configure FFmpeg separately for recording and GIF export.
+Get `LightCapture-0.3.1-win-x64-portable.zip` from [Releases](https://github.com/LAN-TINA-WS/LightCapture/releases), extract the entire folder, and run `LightCapture.exe`. The portable package includes the .NET runtime. Configure FFmpeg separately for recording and GIF export.
 
 The release also provides a source archive and `SHA256SUMS.txt`. This is a preview build; the validation scope and remaining desktop checks are described below.
 
@@ -47,7 +47,7 @@ These control previews use synthetic content:
 - **On-device OCR:** recognizes text using installed Windows language components. Results can be edited, copied, or exported to TXT and Word.
 - **Text translation:** MyMemory, OpenAI-compatible endpoints, and DeepL, with endpoint, model, and key settings and a connection test.
 - **Region recording:** MP4 and GIF output with separate system-audio and microphone controls. Requires FFmpeg.
-- **Appearance settings:** record a global shortcut, size the capture toolbar and tray menu independently, and adjust the window preselection border.
+- **Appearance settings:** record a global shortcut, size the capture toolbar and tray menu independently, and adjust the window preselection border and magnifier follow speed.
 
 ## Requirements
 
@@ -76,6 +76,19 @@ Run `LightCapture.exe`. It starts in the system tray. Left-click the tray icon t
 | Esc | Cancel text entry or leave the current capture operation |
 
 Choose **退出轻截** (Exit LightCapture) from the tray menu to stop the background process. Start with Windows is off by default and can be enabled in **偏好设置** (Preferences). Exit the old process before running an updated build; the single-instance mechanism otherwise forwards the launch request to the running version.
+
+## Magnifier follow speed
+
+Open **偏好设置 → 界面外观 → 放大镜跟随速度** (Preferences → Appearance → Magnifier follow speed). Choose **实时** (Real-time), **快速** (Fast), **标准** (Standard), or **省电** (Power saving). Real-time is the default. Save to apply it to the next capture; restoring appearance defaults also restores real-time following.
+
+Real-time mode prioritizes a prompt response; slower modes reduce repaint frequency. Moving the magnifier repaints its previous and new areas and reuses text layouts and monitor information. Color picking and selection use the current mouse position. Actual responsiveness depends on the device and system paint scheduling.
+
+<details>
+<summary>View follow-speed settings</summary>
+
+![Magnifier follow-speed settings](docs/images/magnifier-follow-settings.png)
+
+</details>
 
 ## Translation settings
 
@@ -127,7 +140,7 @@ The local full build produces `dist/LightCapture-<version>-win-x64/` and a ZIP t
 
 ## Validation and known limitations
 
-Current local validation records include 41 program checks, 12 toolbar cases, and 94 interface cases passing. Translation protocols use mocked HTTP responses; test real endpoints with your own configuration. Recording checks use synthetic video and audio.
+Current local validation records include 41 program checks, 12 toolbar cases, and 109 interface cases passing. New magnifier checks cover follow scheduling, saved preferences, mixed-DPI monitor selection, and pixel comparisons of partial repaints at 4K. Synthetic paint timings do not measure real desktop input latency. Translation protocols use mocked HTTP responses; test real endpoints with your own configuration. Recording checks use synthetic video and audio.
 
 Desktop capture, multi-monitor and mixed-DPI setups, cross-application paste, physical audio devices, and long recordings need further real-world testing. Scrolling capture currently stitches downward only. Recording pause, manual audio-device selection, HDR correction, and image-editor cropping are not implemented. Existing annotations in imported images are not reconstructed as editable objects.
 

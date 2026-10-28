@@ -24,6 +24,7 @@ internal sealed class CaptureMagnifier : IDisposable
     internal const int Columns = 19, Rows = 13;
     internal const string CopyHintText = "按 C 复制色号", ExitHintText = "鼠标右键退出截图";
     readonly UiFonts fonts = new();
+    readonly Dictionary<(float Scale, float DpiX, float DpiY), MagnifierLayout> layouts = [];
     static Size MeasureText(Graphics graphics, string text, Font font)
     {
         using var format = new StringFormat(StringFormat.GenericTypographic) { FormatFlags = StringFormatFlags.NoWrap };
@@ -37,6 +38,8 @@ internal sealed class CaptureMagnifier : IDisposable
     internal MagnifierLayout Measure(Graphics graphics, float requestedScale)
     {
         float scale = Math.Clamp(requestedScale, 1, 4);
+        var key = (scale, graphics.DpiX, graphics.DpiY);
+        if (layouts.TryGetValue(key, out var cached)) return cached;
         int S(float value) => (int)Math.Ceiling(value * scale);
         var font = fonts.Get(13 * scale);
         var texts = new[] { "99999 x 99999", "RGB:#DDDDDD", CopyHintText, ExitHintText }.Select(text => MeasureText(graphics, text, font)).ToArray();
@@ -50,7 +53,8 @@ internal sealed class CaptureMagnifier : IDisposable
         var hex = new Rectangle(padding, dimensions.Bottom, dimensions.Width, lineHeight);
         var copy = new Rectangle(padding, hex.Bottom, dimensions.Width, lineHeight);
         var exit = new Rectangle(padding, copy.Bottom, dimensions.Width, lineHeight);
-        return new(scale, cell, new(0, 0, width, exit.Bottom + S(6)), preview, dimensions, hex, copy, exit);
+        var layout = new MagnifierLayout(scale, cell, new(0, 0, width, exit.Bottom + S(6)), preview, dimensions, hex, copy, exit);
+        layouts.Add(key, layout); return layout;
     }
     internal MagnifierLayout Fit(Graphics graphics, float scale, Rectangle screen)
     {
@@ -107,5 +111,5 @@ internal sealed class CaptureMagnifier : IDisposable
         }
         finally { graphics.Restore(state); }
     }
-    public void Dispose() => fonts.Dispose();
+    public void Dispose() { layouts.Clear(); fonts.Dispose(); }
 }

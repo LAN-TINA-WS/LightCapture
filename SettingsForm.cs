@@ -51,6 +51,7 @@ internal sealed class SettingsForm : Form
             settings.StartWithWindows = pane.Startup; settings.FfmpegPath = pane.EncoderPath;
             settings.ToolbarSizePercent = pane.ToolbarSizePercent; settings.TrayMenuSizePercent = pane.TrayMenuSizePercent;
             settings.PreviewBorderThickness = pane.PreviewBorderThickness;
+            settings.MagnifierRefreshIntervalMs = pane.MagnifierRefreshIntervalMs;
             settings.OcrLanguage = pane.OcrLanguage; settings.Translation = translation; settings.Save(); changed(); Close();
         }
         catch (Exception ex) { Ui.Error(this, ex); }
@@ -67,7 +68,9 @@ internal sealed class SettingsPane : UserControl
     internal readonly RoundedPanel SizeCard = new();
     internal readonly TranslationSettingsCard TranslationCard;
     readonly Label sizeTitle, sizeDescription, toolbarSizeLabel, traySizeLabel, toolbarPercent, trayPercent, borderThicknessLabel;
+    readonly Label magnifierSpeedLabel, magnifierSpeedHint;
     internal readonly ChoiceField PreviewBorderField = new("预选窗口蓝框粗细");
+    internal readonly ChoiceField MagnifierSpeedField = new("放大镜跟随速度");
     readonly Panel borderSample = new() { BackColor = Color.White };
     internal readonly SizeSlider ToolbarSizeSlider = new("截图工具栏大小"), TrayMenuSizeSlider = new("托盘菜单大小");
     internal readonly ModernButton ResetSizesButton;
@@ -90,6 +93,7 @@ internal sealed class SettingsPane : UserControl
     internal int ToolbarSizePercent => ToolbarSizeSlider.Value;
     internal int TrayMenuSizePercent => TrayMenuSizeSlider.Value;
     internal int PreviewBorderThickness => PreviewBorderField.Input.SelectedIndex + 1;
+    internal int MagnifierRefreshIntervalMs => MagnifierFollowOptions.Modes[MagnifierSpeedField.Input.SelectedIndex].Interval;
     internal float UiScale => scale;
     internal IEnumerable<Control> Cards => [hotkeyCard, SizeCard, startupCard, encoderCard, ocrCard, TranslationCard];
 
@@ -113,9 +117,13 @@ internal sealed class SettingsPane : UserControl
         PreviewBorderField.Input.Items.AddRange(Enumerable.Range(1, 6).Select(n => (object)$"{n} 档").ToArray());
         PreviewBorderField.Input.SelectedIndex = settings.PreviewBorderThickness - 1;
         PreviewBorderField.Input.SelectedIndexChanged += (_, _) => borderSample.Invalidate();
+        magnifierSpeedLabel = Label(SizeCard, "放大镜跟随速度");
+        magnifierSpeedHint = Label(SizeCard, "实时模式优先跟手；降低速度可减少重绘。保存后下次截图生效。", true);
+        MagnifierSpeedField.Input.Items.AddRange(MagnifierFollowOptions.Modes.Select(mode => (object)mode.Name).ToArray());
+        MagnifierSpeedField.Input.SelectedIndex = MagnifierFollowOptions.IndexOf(settings.MagnifierRefreshIntervalMs);
         borderSample.Paint += (_, e) => CapturePreview.DrawOutline(e.Graphics, Rectangle.Inflate(borderSample.ClientRectangle, -(int)(6 * scale), -(int)(6 * scale)), PreviewBorderThickness, scale);
-        ResetSizesButton = new("恢复默认", () => { ToolbarSizeSlider.Value = UiSizing.Default; TrayMenuSizeSlider.Value = UiSizing.Default; PreviewBorderField.Input.SelectedIndex = 1; });
-        SizeCard.Controls.AddRange([ToolbarSizeSlider, TrayMenuSizeSlider, PreviewBorderField, borderSample, ResetSizesButton]);
+        ResetSizesButton = new("恢复默认", () => { ToolbarSizeSlider.Value = UiSizing.Default; TrayMenuSizeSlider.Value = UiSizing.Default; PreviewBorderField.Input.SelectedIndex = 1; MagnifierSpeedField.Input.SelectedIndex = 0; });
+        SizeCard.Controls.AddRange([ToolbarSizeSlider, TrayMenuSizeSlider, PreviewBorderField, MagnifierSpeedField, borderSample, ResetSizesButton]);
         startupTitle = Label(startupCard, "登录时启动"); startupDescription = Label(startupCard, "登录 Windows 后，自动在托盘中待命。", true);
         startup.Checked = settings.StartWithWindows; startupCard.Controls.Add(startup);
         encoderTitle = Label(encoderCard, "录屏编码器"); encoderDescription = Label(encoderCard, "留空即可使用随程序附带的 FFmpeg。", true);
@@ -155,7 +163,8 @@ internal sealed class SettingsPane : UserControl
         title.Font = fonts.Get(26 * scale, FontStyle.Bold); subtitle.Font = fonts.Get(14 * scale);
         foreach (var label in new[] { keyTitle, sizeTitle, startupTitle, encoderTitle, ocrTitle }) label.Font = fonts.Get(16 * scale, FontStyle.Bold);
         foreach (var label in new[] { keyDescription, sizeDescription, startupDescription, encoderDescription, ocrDescription, privacy, footerHint }) label.Font = fonts.Get(13 * scale);
-        toolbarSizeLabel.Font = traySizeLabel.Font = borderThicknessLabel.Font = fonts.Get(14 * scale);
+        toolbarSizeLabel.Font = traySizeLabel.Font = borderThicknessLabel.Font = magnifierSpeedLabel.Font = fonts.Get(14 * scale);
+        magnifierSpeedHint.Font = fonts.Get(13 * scale);
         toolbarPercent.Font = trayPercent.Font = fonts.Get(14 * scale, FontStyle.Bold);
         ToolbarSizeSlider.UiScale = TrayMenuSizeSlider.UiScale = scale;
         ResetSizesButton.Font = fonts.Get(13 * scale); ResetSizesButton.UiScale = scale;
@@ -215,6 +224,10 @@ internal sealed class SettingsPane : UserControl
             PreviewBorderField.Bounds = new(cardWidth - inner - S(104), sizeAt, S(104), S(44));
             PreviewBorderField.Arrange(scale, fonts.Get(15 * scale));
             sizeAt += S(48);
+            PlaceLabel(magnifierSpeedLabel, inner, sizeAt, S(114)); magnifierSpeedLabel.Top += (S(44) - magnifierSpeedLabel.Height) / 2;
+            MagnifierSpeedField.Bounds = new(inner + S(126), sizeAt, usable - S(126), S(44));
+            MagnifierSpeedField.Arrange(scale, fonts.Get(15 * scale)); sizeAt += S(54);
+            sizeAt = PlaceLabel(magnifierSpeedHint, inner, sizeAt, usable) + S(4);
             SizeCard.Bounds = new(padding, y, cardWidth, sizeAt + S(14)); y = SizeCard.Bottom + S(12);
             int startAt = PlaceLabel(startupTitle, inner, S(20), usable - S(78)) + S(5);
             int startBottom = PlaceLabel(startupDescription, inner, startAt, usable - S(78));

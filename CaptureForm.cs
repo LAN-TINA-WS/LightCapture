@@ -20,6 +20,12 @@ internal sealed class CaptureForm : Form, IMessageFilter
     readonly CaptureIntent intent;
     readonly CaptureToolbar toolbar;
     readonly CaptureMagnifier magnifier = new();
+    readonly MagnifierFollowState magnifierFollow = new();
+    readonly System.Diagnostics.Stopwatch followClock = System.Diagnostics.Stopwatch.StartNew();
+    readonly System.Windows.Forms.Timer followTimer = new();
+    readonly CaptureDisplay[] displays;
+    readonly Dictionary<CaptureDisplay, MagnifierLayout> displayLayouts = [];
+    Rectangle paintedMagnifierBounds;
     Rectangle selection, hover;
     Point cursorPoint, down, last;
     DrawingTool tool = DrawingTool.Select;
@@ -43,6 +49,14 @@ internal sealed class CaptureForm : Form, IMessageFilter
         this.desktop = desktop;
         this.intent = intent;
         document = new(background);
+        displays = Screen.AllScreens.Select(screen =>
+        {
+            var bounds = screen.Bounds; var area = screen.WorkingArea;
+            float scale = Native.DpiScaleAt(new(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2));
+            bounds.Offset(-desktop.X, -desktop.Y); area.Offset(-desktop.X, -desktop.Y);
+            return new CaptureDisplay(bounds, area, scale);
+        }).ToArray();
+        followTimer.Tick += (_, _) => FlushMagnifier();
         windows = Native.VisibleWindows(desktop).Select(r => new Rectangle(r.X - desktop.X, r.Y - desktop.Y, r.Width, r.Height)).ToList();
         Text = "轻截 · " + (intent switch
         {
@@ -71,7 +85,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
             selection = new(Point.Empty, background.Size);
             Shown += (_, _) => PlaceToolbar();
         }
-        Shown += (_, _) => { cursorPoint = PointToClient(Cursor.Position); UpdateHover(cursorPoint); Activate(); Focus(); Invalidate(); };
+        Shown += (_, _) => { cursorPoint = PointToClient(Cursor.Position); magnifierFollow.Request(cursorPoint, followClock.ElapsedMilliseconds, 0, true); UpdateHover(cursorPoint); Activate(); Focus(); Invalidate(); };
         FormClosed += (_, _) => { editor?.Dispose(); document.Dispose(); try { settings.Save(); } catch (Exception ex) { Program.Log(ex); } };
         Application.AddMessageFilter(this);
     }
@@ -89,7 +103,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
     }
     protected override void Dispose(bool disposing)
     {
-        if (disposing) Application.RemoveMessageFilter(this);
+        if (disposing) { Application.RemoveMessageFilter(this); followTimer.Stop(); followTimer.Dispose(); }
         base.Dispose(disposing);
         if (disposing) magnifier.Dispose();
     }
@@ -151,11 +165,11 @@ internal sealed class CaptureForm : Form, IMessageFilter
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
-        g.DrawImageUnscaled(document.Background, 0, 0);
+        CapturePreview.DrawBackground(g, document.Background, e.ClipRectangle);
         if (selection.Width > 0 && selection.Height > 0)
         {
             var state = g.Save();
-            g.SetClip(selection);
+            g.SetClip(selection, CombineMode.Intersect);
             if (polygon is { Count: >= 3 })
             {
                 using var p = new GraphicsPath();
@@ -178,8 +192,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
             }
             else
             {
-                var absolute = new Point(desktop.X + cursorPoint.X, desktop.Y + cursorPoint.Y);
-                CapturePreview.DrawOutline(g, rect, settings.PreviewBorderThickness, Native.DpiScaleAt(absolute));
+                CapturePreview.DrawOutline(g, rect, settings.PreviewBorderThickness, CaptureDisplay.At(displays, cursorPoint).Scale);
             }
             if (selection.Width > 0 && interaction != "polygon")
             foreach (var h in Handles(selection))
@@ -209,8 +222,9 @@ internal sealed class CaptureForm : Form, IMessageFilter
             g.FillRectangle(Brushes.White, b.Right - 4, b.Bottom - 4, 8, 8);
             g.DrawRectangle(Pens.DodgerBlue, b.Right - 4, b.Bottom - 4, 8, 8);
         }
-        if (!toolbar.Visible && interaction != "moving-object" && interaction != "resizing-object" && draft == null)
+        if (ShowMagnifier)
             DrawMagnifier(g);
+        else paintedMagnifierBounds = Rectangle.Empty;
         if (selection.IsEmpty && (hover.IsEmpty || interaction == "polygon"))
         {
             string hint = interaction == "polygon" ? "自由选区：左键添加点 · 双击闭合 · 右键退出" : "拖动选择区域 · 单击吸附窗口 · 右键 / Esc 取消";
@@ -222,8 +236,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
     {
         hover = windows.FirstOrDefault(r => r.Contains(point));
         if (!hover.IsEmpty) return;
-        var screen = Screen.FromPoint(PointToScreen(point)).Bounds;
-        hover = Rectangle.Intersect(new Rectangle(screen.X - desktop.X, screen.Y - desktop.Y, screen.Width, screen.Height), ClientRectangle);
+        hover = Rectangle.Intersect(CaptureDisplay.At(displays, point).Bounds, ClientRectangle);
     }
     void DrawLabel(Graphics g, string text, Point at)
     {
@@ -235,14 +248,63 @@ internal sealed class CaptureForm : Form, IMessageFilter
     }
     void DrawMagnifier(Graphics g)
     {
-        if (cursorPoint.X < 0 || cursorPoint.Y < 0 || cursorPoint.X >= document.Background.Width || cursorPoint.Y >= document.Background.Height)
+        if (!magnifierFollow.HasPosition) magnifierFollow.Request(cursorPoint, followClock.ElapsedMilliseconds, 0, true);
+        var point = magnifierFollow.Position;
+        var display = CaptureDisplay.At(displays, point);
+        var layout = LayoutFor(g, display);
+        var bounds = layout.Place(point, display.WorkingArea);
+        var dimensions = !selection.IsEmpty ? selection.Size : !hover.IsEmpty ? hover.Size : display.Bounds.Size;
+        magnifier.Draw(g, document.Background, point, bounds.Location, layout, dimensions);
+        paintedMagnifierBounds = bounds;
+    }
+    bool ShowMagnifier => !toolbar.Visible && interaction is not ("moving-object" or "resizing-object") && draft == null
+        && new Rectangle(Point.Empty, document.Background.Size).Contains(cursorPoint);
+    void QueueMagnifier(bool sceneChanged)
+    {
+        if (!ShowMagnifier)
+        {
+            followTimer.Stop(); magnifierFollow.Reset();
+            if (!paintedMagnifierBounds.IsEmpty) Invalidate(Rectangle.Inflate(paintedMagnifierBounds, 2, 2));
+            if (sceneChanged) Invalidate();
             return;
-        var absolute = new Point(desktop.X + cursorPoint.X, desktop.Y + cursorPoint.Y);
-        var area = Screen.FromPoint(absolute).WorkingArea;
-        area.Offset(-desktop.X, -desktop.Y);
-        var layout = magnifier.Fit(g, Native.DpiScaleAt(absolute), area);
-        var dimensions = !selection.IsEmpty ? selection.Size : !hover.IsEmpty ? hover.Size : Screen.FromPoint(absolute).Bounds.Size;
-        magnifier.Draw(g, document.Background, cursorPoint, layout.Place(cursorPoint, area).Location, layout, dimensions);
+        }
+        bool moved = magnifierFollow.Request(cursorPoint, followClock.ElapsedMilliseconds, settings.MagnifierRefreshIntervalMs);
+        if (sceneChanged) Invalidate();
+        else if (moved) InvalidateMagnifier();
+        ArmFollowTimer();
+        // Real-time mode paints the dirty region now instead of waiting behind more input.
+        if (moved && !sceneChanged && settings.MagnifierRefreshIntervalMs == 0) Update();
+    }
+    void InvalidateMagnifier()
+    {
+        var point = magnifierFollow.Position;
+        var display = CaptureDisplay.At(displays, point);
+        if (!displayLayouts.TryGetValue(display, out var layout))
+        {
+            using var graphics = CreateGraphics(); layout = LayoutFor(graphics, display);
+        }
+        using var region = MagnifierDamage.Create(paintedMagnifierBounds, layout.Place(point, display.WorkingArea), ClientRectangle);
+        Invalidate(region, false);
+    }
+    MagnifierLayout LayoutFor(Graphics graphics, CaptureDisplay display)
+    {
+        if (!displayLayouts.TryGetValue(display, out var layout))
+            displayLayouts.Add(display, layout = magnifier.Fit(graphics, display.Scale, display.WorkingArea));
+        return layout;
+    }
+    void ArmFollowTimer()
+    {
+        if (!magnifierFollow.Pending) { followTimer.Stop(); return; }
+        if (followTimer.Enabled) return;
+        followTimer.Interval = magnifierFollow.RemainingMilliseconds(followClock.ElapsedMilliseconds, settings.MagnifierRefreshIntervalMs);
+        followTimer.Start();
+    }
+    void FlushMagnifier()
+    {
+        followTimer.Stop();
+        if (IsDisposed || !ShowMagnifier) { magnifierFollow.Reset(); return; }
+        if (magnifierFollow.Flush(followClock.ElapsedMilliseconds, settings.MagnifierRefreshIntervalMs)) { InvalidateMagnifier(); Update(); }
+        ArmFollowTimer();
     }
     static List<Rectangle> Handles(Rectangle r)
     {
@@ -260,6 +322,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
     }
     protected override void OnMouseMove(MouseEventArgs e)
     {
+        var previousHover = hover;
         cursorPoint = e.Location;
         if (interaction == "selecting")
         {
@@ -331,7 +394,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
             UpdateHover(e.Location);
         }
         last = e.Location;
-        Invalidate();
+        QueueMagnifier(interaction.Length != 0 || hover != previousHover);
         base.OnMouseMove(e);
     }
     protected override void OnMouseDown(MouseEventArgs e)
@@ -344,6 +407,7 @@ internal sealed class CaptureForm : Form, IMessageFilter
         CommitText();
         Focus();
         down = last = cursorPoint = e.Location;
+        magnifierFollow.Request(cursorPoint, followClock.ElapsedMilliseconds, 0, true); followTimer.Stop();
         suppressDoubleClick = false;
         if (interaction == "polygon")
         {

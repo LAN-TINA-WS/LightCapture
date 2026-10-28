@@ -21,6 +21,8 @@ internal sealed class AppSettings
     public int TrayMenuSizePercent { get => trayMenuSizePercent; set => trayMenuSizePercent = UiSizing.Clamp(value); }
     int previewBorderThickness = 2;
     public int PreviewBorderThickness { get => previewBorderThickness; set => previewBorderThickness = Math.Clamp(value, 1, 6); }
+    int magnifierRefreshIntervalMs;
+    public int MagnifierRefreshIntervalMs { get => magnifierRefreshIntervalMs; set => magnifierRefreshIntervalMs = MagnifierFollowOptions.NormalizeInterval(value); }
     public bool StartWithWindows
     {
         get; set;
